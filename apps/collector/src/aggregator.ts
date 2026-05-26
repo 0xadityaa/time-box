@@ -1,17 +1,21 @@
 import { prisma } from '@time-box/db';
 
+let isAggregating = false;
+
 export async function aggregateHourlyMetrics() {
-  const now = new Date();
-  // Truncate to the start of the current hour
-  const currentHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
+  if (isAggregating) return;
+  isAggregating = true;
   
-  // We process the previous hour
-  const targetHour = new Date(currentHour.getTime() - 60 * 60 * 1000);
-  const targetEnd = currentHour;
-
-  console.log(`[Aggregator] Starting hourly aggregation for interval ${targetHour.toISOString()} to ${targetEnd.toISOString()}`);
-
   try {
+    const now = new Date();
+    // Truncate to the start of the current UTC hour
+    const currentHour = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), 0, 0, 0));
+    
+    // We process the previous hour
+    const targetHour = new Date(currentHour.getTime() - 60 * 60 * 1000);
+    const targetEnd = currentHour;
+
+    console.log(`[Aggregator] Starting hourly aggregation for interval ${targetHour.toISOString()} to ${targetEnd.toISOString()}`);
     // 1. Fetch all spans in this time window
     const spans = await prisma.span.findMany({
       where: {
@@ -108,6 +112,8 @@ export async function aggregateHourlyMetrics() {
     
   } catch (err) {
     console.error(`[Aggregator] Failed to aggregate metrics:`, err);
+  } finally {
+    isAggregating = false;
   }
 }
 

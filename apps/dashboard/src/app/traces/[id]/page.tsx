@@ -56,7 +56,7 @@ export default async function TraceDetailPage({ params }: { params: { id: string
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1 font-mono">
-                  {span.spanId} • {span.latencyMs}ms
+                  {span.spanId} • {span.latencyMs ?? '—'}ms
                 </div>
               </div>
               

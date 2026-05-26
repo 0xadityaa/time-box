@@ -13,10 +13,12 @@ export function PayloadViewer({ payloadStr }: PayloadViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
   
   let formattedJson = payloadStr;
-  try {
-    formattedJson = JSON.stringify(JSON.parse(payloadStr), null, 2);
-  } catch (e) {
-    // leave as is
+  if (isOpen) {
+    try {
+      formattedJson = JSON.stringify(JSON.parse(payloadStr), null, 2);
+    } catch (e) {
+      // leave as is
+    }
   }
 
   return (

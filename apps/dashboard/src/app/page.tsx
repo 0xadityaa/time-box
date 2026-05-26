@@ -1,6 +1,5 @@
 import { prisma } from '@time-box/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Activity, Clock, FileDigit, ShieldAlert } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
