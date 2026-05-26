@@ -1,11 +1,13 @@
 import { Hono } from 'hono';
 import { traceQueue } from './queue';
-
-import { processOtlpPayload } from './processor';
+import { startAggregator } from './aggregator';
+import { startSettingsPoller } from './settings';
 
 export const app = new Hono();
 
 traceQueue.start();
+startAggregator();
+startSettingsPoller();
 
 // Auth Middleware
 app.use('/v1/traces', async (c, next) => {

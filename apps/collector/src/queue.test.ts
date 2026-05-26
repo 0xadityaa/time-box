@@ -46,7 +46,7 @@ describe('TraceQueue', () => {
     await queue.flush();
     
     expect(mockProcessOtlpPayloadBatch).toHaveBeenCalled();
-    expect(mockProcessOtlpPayloadBatch).toHaveBeenCalledWith([{ test: 1 }], false);
+    expect(mockProcessOtlpPayloadBatch).toHaveBeenCalledWith([{ test: 1 }]);
     expect((queue as any).buffer.length).toBe(0);
   });
 
