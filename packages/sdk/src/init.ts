@@ -1,8 +1,8 @@
 import { trace, context, propagation, defaultTextMapSetter, defaultTextMapGetter } from '@opentelemetry/api';
 import { BasicTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { resourceFromAttributes } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { Resource } from '@opentelemetry/resources';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 
 let provider: BasicTracerProvider | null = null;
@@ -10,6 +10,7 @@ let provider: BasicTracerProvider | null = null;
 export interface InitOptions {
   serviceName: string;
   endpoint?: string;
+  apiKey?: string;
 }
 
 export function initTimeBox(options: InitOptions) {
@@ -18,13 +19,19 @@ export function initTimeBox(options: InitOptions) {
   }
 
   provider = new BasicTracerProvider({
-    resource: resourceFromAttributes({
-      [ATTR_SERVICE_NAME]: options.serviceName,
+    resource: new Resource({
+      [SemanticResourceAttributes.SERVICE_NAME]: options.serviceName,
     }),
   });
 
+  const headers: Record<string, string> = {};
+  if (options.apiKey) {
+    headers['x-api-key'] = options.apiKey;
+  }
+
   const exporter = new OTLPTraceExporter({
     url: options.endpoint || 'http://localhost:4318/v1/traces',
+    headers,
   });
 
   // Use BatchSpanProcessor for non-blocking asynchronous dispatch
