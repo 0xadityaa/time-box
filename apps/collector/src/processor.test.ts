@@ -1,12 +1,16 @@
 import { expect, test, describe, mock } from 'bun:test';
-import { processOtlpPayload } from './processor';
+
+// Set up spies
+const traceUpsertSpy = mock(() => Promise.resolve());
+const spanUpsertSpy = mock(() => Promise.resolve());
+const s3SendSpy = mock(() => Promise.resolve());
 
 // Mock dependencies
 mock.module('@prisma/client', () => {
   return {
     PrismaClient: class {
-      trace = { upsert: mock(() => Promise.resolve()) };
-      span = { upsert: mock(() => Promise.resolve()) };
+      trace = { upsert: traceUpsertSpy };
+      span = { upsert: spanUpsertSpy };
     }
   };
 });
@@ -14,7 +18,7 @@ mock.module('@prisma/client', () => {
 mock.module('@aws-sdk/client-s3', () => {
   return {
     S3Client: class {
-      send = mock(() => Promise.resolve());
+      send = s3SendSpy;
     },
     PutObjectCommand: class {}
   };
@@ -22,6 +26,9 @@ mock.module('@aws-sdk/client-s3', () => {
 
 describe('Collector Payload Processor', () => {
   test('should process valid OTLP payload without content capture', async () => {
+    // Dynamically import processor AFTER mocks are registered
+    const { processOtlpPayload } = await import('./processor');
+    
     const payload = {
       resourceSpans: [{
         scopeSpans: [{
@@ -39,8 +46,39 @@ describe('Collector Payload Processor', () => {
       }]
     };
 
-    // We only test that it doesn't throw and parses properly, because 
-    // the module mocking is injected globally and we just want to ensure it resolves.
     await expect(processOtlpPayload(payload, false)).resolves.toBeUndefined();
+    
+    // Assert that upsert was called with the correct extracted attributes
+    expect(traceUpsertSpy).toHaveBeenCalled();
+    expect(spanUpsertSpy).toHaveBeenCalled();
+    
+    // Ensure S3 was not called because captureContent is false
+    expect(s3SendSpy).not.toHaveBeenCalled();
+  });
+
+  test('should process valid OTLP payload with content capture', async () => {
+    const { processOtlpPayload } = await import('./processor');
+    
+    const payload = {
+      resourceSpans: [{
+        scopeSpans: [{
+          spans: [{
+            traceId: 'trace-789',
+            spanId: 'span-012',
+            name: 'chat',
+            startTimeUnixNano: '1680000000000000000',
+            attributes: []
+          }]
+        }]
+      }]
+    };
+
+    // First reset the spy
+    s3SendSpy.mockClear();
+
+    await expect(processOtlpPayload(payload, true)).resolves.toBeUndefined();
+    
+    // Ensure S3 was called because captureContent is true
+    expect(s3SendSpy).toHaveBeenCalled();
   });
 });

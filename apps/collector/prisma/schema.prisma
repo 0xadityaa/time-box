@@ -16,7 +16,8 @@ model Trace {
 }
 
 model Span {
-  id              String   @id // span_id
+  id              String   @id // ${traceId}:${spanId}
+  spanId          String
   traceId         String
   parentSpanId    String?
   name            String   // operation_name e.g. chat, mcp_tool_call
