@@ -55,4 +55,30 @@ describe('Collector Payload Processor', () => {
     // Ensure S3 was not called because captureContent is false
     expect(s3SendSpy).not.toHaveBeenCalled();
   });
+
+  test('should process valid OTLP payload with content capture', async () => {
+    const { processOtlpPayload } = await import('./processor');
+    
+    const payload = {
+      resourceSpans: [{
+        scopeSpans: [{
+          spans: [{
+            traceId: 'trace-789',
+            spanId: 'span-012',
+            name: 'chat',
+            startTimeUnixNano: '1680000000000000000',
+            attributes: []
+          }]
+        }]
+      }]
+    };
+
+    // First reset the spy
+    s3SendSpy.mockClear();
+
+    await expect(processOtlpPayload(payload, true)).resolves.toBeUndefined();
+    
+    // Ensure S3 was called because captureContent is true
+    expect(s3SendSpy).toHaveBeenCalled();
+  });
 });
