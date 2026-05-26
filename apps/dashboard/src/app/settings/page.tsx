@@ -42,10 +42,6 @@ export default async function SettingsPage() {
                   <Switch 
                     name="capturePayloads" 
                     defaultChecked={capturePayloads} 
-                    onCheckedChange={(checked) => {
-                      // We need a submit button or submit on change
-                      // Next.js forms require a submit button for Server Actions if not using JavaScript
-                    }}
                   />
                 </div>
               </div>
