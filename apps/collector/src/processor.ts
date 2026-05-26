@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@time-box/db';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-const prisma = new PrismaClient();
 
 let s3Client: S3Client | null = null;
 function getS3Client() {
@@ -52,6 +50,7 @@ export async function processOtlpPayloadBatch(payloads: any[], captureContent = 
           const inputTokens = getAttrInt('gen_ai.usage.input_tokens');
           const outputTokens = getAttrInt('gen_ai.usage.output_tokens');
           const latencyMs = getAttrInt('latency_ms');
+          const status = span.status?.code === 1 ? 'OK' : (span.status?.code === 2 ? 'ERROR' : 'UNSET');
           
           let payloadUri: string | undefined;
           
@@ -96,7 +95,7 @@ export async function processOtlpPayloadBatch(payloads: any[], captureContent = 
           
           spansToInsert.push({
             id: compositeId,
-            spanId, // Provided schema was updated
+            spanId,
             traceId,
             parentSpanId,
             name: span.name || 'unnamed',
@@ -107,6 +106,7 @@ export async function processOtlpPayloadBatch(payloads: any[], captureContent = 
             inputTokens,
             outputTokens,
             payloadUri,
+            status,
           });
         }
       }

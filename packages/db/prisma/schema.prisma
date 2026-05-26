@@ -28,10 +28,27 @@ model Span {
   inputTokens     Int?
   outputTokens    Int?
   payloadUri      String?  // minio://bucket/abc-123/span-456.json
+  status          String?  // e.g. OK, ERROR, UNSET
   
   trace           Trace    @relation(fields: [traceId], references: [id], onDelete: Cascade)
   parent          Span?    @relation("SpanToSpan", fields: [parentSpanId], references: [id])
   children        Span[]   @relation("SpanToSpan")
 
   @@index([traceId])
+}
+
+model HourlyMetrics {
+  id              String   @id @default(cuid())
+  timestamp       DateTime
+  genAiSystem     String
+  inputTokens     Int
+  outputTokens    Int
+  p50LatencyMs    Float
+  p90LatencyMs    Float
+  p99LatencyMs    Float
+  successCount    Int
+  errorCount      Int
+  
+  @@unique([timestamp, genAiSystem])
+  @@index([timestamp])
 }

@@ -1,0 +1,19 @@
+{
+  "name": "@time-box/db",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "5.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "prisma": "5.14.0",
+    "tsup": "^8.0.2",
+    "typescript": "^5.0.0"
+  }
+}

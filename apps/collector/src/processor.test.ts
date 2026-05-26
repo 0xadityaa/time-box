@@ -7,12 +7,12 @@ const transactionSpy = mock((queries: any[]) => Promise.all(queries));
 const s3SendSpy = mock(() => Promise.resolve());
 
 // Mock dependencies
-mock.module('@prisma/client', () => {
+mock.module('@time-box/db', () => {
   return {
-    PrismaClient: class {
-      $transaction = transactionSpy;
-      trace = { createMany: traceCreateManySpy };
-      span = { createMany: spanCreateManySpy };
+    prisma: {
+      $transaction: transactionSpy,
+      trace: { createMany: traceCreateManySpy },
+      span: { createMany: spanCreateManySpy }
     }
   };
 });

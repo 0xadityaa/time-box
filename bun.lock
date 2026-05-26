@@ -10,12 +10,11 @@
       "version": "1.0.0",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1053.0",
-        "@prisma/client": "5.14.0",
+        "@time-box/db": "workspace:*",
         "hono": "^4.0.0",
       },
       "devDependencies": {
         "@types/bun": "latest",
-        "prisma": "5.14.0",
       },
     },
     "apps/dashboard": {
@@ -42,6 +41,19 @@
         "eslint-config-next": "16.2.6",
         "tailwindcss": "^4",
         "typescript": "^5",
+      },
+    },
+    "packages/db": {
+      "name": "@time-box/db",
+      "version": "1.0.0",
+      "dependencies": {
+        "@prisma/client": "5.14.0",
+      },
+      "devDependencies": {
+        "@types/node": "^25.9.1",
+        "prisma": "5.14.0",
+        "tsup": "^8.0.2",
+        "typescript": "^5.0.0",
       },
     },
     "packages/sdk": {
@@ -557,6 +569,8 @@
     "@time-box/collector": ["@time-box/collector@workspace:apps/collector"],
 
     "@time-box/core": ["@time-box/core@workspace:packages/sdk"],
+
+    "@time-box/db": ["@time-box/db@workspace:packages/db"],
 
     "@ts-morph/common": ["@ts-morph/common@0.27.0", "", { "dependencies": { "fast-glob": "^3.3.3", "minimatch": "^10.0.1", "path-browserify": "^1.0.1" } }, "sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ=="],
 
@@ -1673,6 +1687,8 @@
     "@tailwindcss/oxide-wasm32-wasi/@tybys/wasm-util": ["@tybys/wasm-util@0.10.2", "", { "dependencies": { "tslib": "^2.4.0" }, "bundled": true }, "sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg=="],
 
     "@tailwindcss/oxide-wasm32-wasi/tslib": ["tslib@2.8.1", "", { "bundled": true }, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
+
+    "@time-box/db/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@ts-morph/common/minimatch": ["minimatch@10.2.5", "", { "dependencies": { "brace-expansion": "^5.0.5" } }, "sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg=="],
 
