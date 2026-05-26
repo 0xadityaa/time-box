@@ -4,6 +4,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
+import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
 
 let provider: BasicTracerProvider | null = null;
 
@@ -40,7 +41,6 @@ export function initTimeBox(options: InitOptions) {
     scheduledDelayMillis: 1000, // Export every second
   }));
 
-  const { AsyncHooksContextManager } = require('@opentelemetry/context-async-hooks');
   const contextManager = new AsyncHooksContextManager();
   contextManager.enable();
   
