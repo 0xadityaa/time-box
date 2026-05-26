@@ -3,15 +3,23 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const prisma = new PrismaClient();
 
-const s3Client = new S3Client({
-  region: 'us-east-1',
-  endpoint: process.env.MINIO_ENDPOINT || 'http://localhost:9000',
-  credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
-  },
-  forcePathStyle: true,
-});
+let s3Client: S3Client | null = null;
+function getS3Client() {
+  if (s3Client) return s3Client;
+  if (!process.env.MINIO_ENDPOINT && process.env.NODE_ENV === 'production') {
+    throw new Error('MINIO_ENDPOINT must be set in production when captureContent is enabled');
+  }
+  s3Client = new S3Client({
+    region: 'us-east-1',
+    endpoint: process.env.MINIO_ENDPOINT || 'http://localhost:9000',
+    credentials: {
+      accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+      secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+    },
+    forcePathStyle: true,
+  });
+  return s3Client;
+}
 
 export async function processOtlpPayload(payload: any, captureContent = false) {
   if (!payload?.resourceSpans) return;
@@ -24,12 +32,11 @@ export async function processOtlpPayload(payload: any, captureContent = false) {
         
         if (!traceId || !spanId) continue;
         
-        // Map OTLP span attributes to our schema
         const attributes = span.attributes || [];
         const getAttrStr = (key: string) => attributes.find((a: any) => a.key === key)?.value?.stringValue;
         const getAttrInt = (key: string) => {
           const val = attributes.find((a: any) => a.key === key)?.value?.intValue;
-          return val ? Number(val) : undefined;
+          return (val !== undefined && val !== null) ? Number(val) : undefined;
         };
         
         const genAiSystem = getAttrStr('gen_ai.system');
@@ -40,10 +47,10 @@ export async function processOtlpPayload(payload: any, captureContent = false) {
         let payloadUri: string | undefined;
         
         if (captureContent) {
-          // If the user opts-in, save the entire payload blob to MinIO
           const objectKey = `${traceId}/${spanId}.json`;
           try {
-            await s3Client.send(new PutObjectCommand({
+            const client = getS3Client();
+            await client.send(new PutObjectCommand({
               Bucket: 'traces',
               Key: objectKey,
               Body: JSON.stringify(span),
@@ -55,12 +62,18 @@ export async function processOtlpPayload(payload: any, captureContent = false) {
           }
         }
         
-        const startTime = new Date(Number(span.startTimeUnixNano || 0) / 1000000);
-        const endTimeStr = span.endTimeUnixNano;
-        const endTime = endTimeStr ? new Date(Number(endTimeStr) / 1000000) : null;
+        // Parse unix nano strings via BigInt to avoid precision loss
+        const startNano = span.startTimeUnixNano;
+        const startTime = startNano ? new Date(Number(BigInt(startNano) / 1000000n)) : new Date();
+        
+        const endNano = span.endTimeUnixNano;
+        const endTime = endNano ? new Date(Number(BigInt(endNano) / 1000000n)) : null;
+
+        const compositeId = `${traceId}:${spanId}`;
+        const parentSpanId = span.parentSpanId ? `${traceId}:${span.parentSpanId}` : null;
+        const name = span.name || 'unnamed';
 
         try {
-          // UPSERT Trace to ensure it exists
           await prisma.trace.upsert({
             where: { id: traceId },
             update: {
@@ -73,21 +86,23 @@ export async function processOtlpPayload(payload: any, captureContent = false) {
             }
           });
 
-          // INSERT/UPSERT Span
           await prisma.span.upsert({
-            where: { id: spanId },
+            where: { id: compositeId },
             update: {
+              name,
               latencyMs,
+              genAiSystem,
               inputTokens,
               outputTokens,
               payloadUri,
               endTime: endTime || undefined,
             },
             create: {
-              id: spanId,
+              id: compositeId,
+              spanId, // Assuming schema was updated to include this separately
               traceId,
-              parentSpanId: span.parentSpanId || null,
-              name: span.name || 'unnamed',
+              parentSpanId,
+              name,
               startTime,
               endTime: endTime || undefined,
               latencyMs,
