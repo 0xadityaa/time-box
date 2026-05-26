@@ -6,6 +6,13 @@ const spanCreateManySpy = mock(() => Promise.resolve());
 const transactionSpy = mock((queries: any[]) => Promise.all(queries));
 const s3SendSpy = mock(() => Promise.resolve());
 
+let mockCapturePayloads = false;
+
+mock.module('./settings', () => ({
+  isCapturePayloadsEnabled: () => mockCapturePayloads,
+  startSettingsPoller: () => {}
+}));
+
 // Mock dependencies
 mock.module('@time-box/db', () => {
   return {
@@ -28,6 +35,7 @@ mock.module('@aws-sdk/client-s3', () => {
 
 describe('Collector Payload Batch Processor', () => {
   test('should process valid OTLP batch without content capture', async () => {
+    mockCapturePayloads = false;
     const { processOtlpPayloadBatch } = await import('./processor');
     
     const payload = {
@@ -47,7 +55,7 @@ describe('Collector Payload Batch Processor', () => {
       }]
     };
 
-    await expect(processOtlpPayloadBatch([payload], false)).resolves.toBeUndefined();
+    await expect(processOtlpPayloadBatch([payload])).resolves.toBeUndefined();
     
     expect(transactionSpy).toHaveBeenCalled();
     expect(traceCreateManySpy).toHaveBeenCalled();
@@ -56,6 +64,7 @@ describe('Collector Payload Batch Processor', () => {
   });
 
   test('should process valid OTLP batch with content capture', async () => {
+    mockCapturePayloads = true;
     const { processOtlpPayloadBatch } = await import('./processor');
     
     const payload = {
@@ -75,7 +84,7 @@ describe('Collector Payload Batch Processor', () => {
     // Reset spy
     s3SendSpy.mockClear();
 
-    await expect(processOtlpPayloadBatch([payload], true)).resolves.toBeUndefined();
+    await expect(processOtlpPayloadBatch([payload])).resolves.toBeUndefined();
     
     expect(s3SendSpy).toHaveBeenCalled();
   });

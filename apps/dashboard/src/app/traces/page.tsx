@@ -24,10 +24,10 @@ export default async function TracesPage() {
         <p className="text-muted-foreground mt-1">Recent execution traces from your agentic workflows.</p>
       </div>
 
-      <div className="rounded-md border border-white/10 bg-black/20 backdrop-blur-md overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden shadow-sm">
         <Table>
-          <TableHeader className="bg-white/5">
-            <TableRow className="border-white/10 hover:bg-transparent">
+          <TableHeader className="bg-muted/50">
+            <TableRow className="border-border hover:bg-transparent">
               <TableHead>Trace ID</TableHead>
               <TableHead>Timestamp</TableHead>
               <TableHead>Spans</TableHead>
@@ -43,9 +43,9 @@ export default async function TracesPage() {
               const hasError = trace.spans.some(s => s.status === 'ERROR');
 
               return (
-                <TableRow key={trace.id} className="border-white/10 hover:bg-white/5">
+                <TableRow key={trace.id} className="border-border hover:bg-muted/30">
                   <TableCell className="font-mono text-xs">
-                    <Link href={`/traces/${trace.id}`} className="text-blue-400 hover:underline">
+                    <Link href={`/traces/${trace.id}`} className="text-primary hover:underline">
                       {trace.id}
                     </Link>
                   </TableCell>

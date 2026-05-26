@@ -33,7 +33,7 @@ export default async function DashboardOverview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Tokens</CardTitle>
             <FileDigit className="h-4 w-4 text-emerald-500" />
@@ -44,7 +44,7 @@ export default async function DashboardOverview() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Avg Latency (P50)</CardTitle>
             <Clock className="h-4 w-4 text-blue-500" />
@@ -55,7 +55,7 @@ export default async function DashboardOverview() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Invocations</CardTitle>
             <Activity className="h-4 w-4 text-indigo-500" />
@@ -66,7 +66,7 @@ export default async function DashboardOverview() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Success Rate</CardTitle>
             <ShieldAlert className="h-4 w-4 text-rose-500" />
@@ -80,7 +80,7 @@ export default async function DashboardOverview() {
       
       {/* TODO: Add Recharts here for the token/latency graph */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+        <Card>
           <CardHeader>
             <CardTitle>Latency Over Time</CardTitle>
           </CardHeader>
@@ -89,7 +89,7 @@ export default async function DashboardOverview() {
           </CardContent>
         </Card>
         
-        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+        <Card>
           <CardHeader>
             <CardTitle>Tokens by System</CardTitle>
           </CardHeader>

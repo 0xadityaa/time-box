@@ -42,8 +42,7 @@ export class TraceQueue {
     this.buffer = [];
 
     try {
-      const captureContent = process.env.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT === 'true';
-      await processOtlpPayloadBatch(batch, captureContent);
+      await processOtlpPayloadBatch(batch);
     } catch (err) {
       console.error('Failed to process batch. Requeueing traces:', err);
       // Re-queue so we don't lose the data

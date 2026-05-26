@@ -41,7 +41,7 @@ export default async function TraceDetailPage({ params }: { params: { id: string
 
       <div className="flex flex-col gap-4">
         {spansWithPayloads.map((span) => (
-          <div key={span.id} className="p-4 rounded-lg border border-white/10 bg-black/20 backdrop-blur-md">
+          <div key={span.id} className="p-4 rounded-lg border border-border bg-card shadow-sm">
             <div className="flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-2">
@@ -49,10 +49,10 @@ export default async function TraceDetailPage({ params }: { params: { id: string
                   {span.status === 'ERROR' ? (
                     <Badge variant="destructive">Error</Badge>
                   ) : (
-                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/50">OK</Badge>
+                    <Badge variant="outline" className="text-primary border-primary/50">OK</Badge>
                   )}
                   {span.genAiSystem && (
-                    <Badge variant="secondary" className="bg-blue-500/10 text-blue-400">{span.genAiSystem}</Badge>
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">{span.genAiSystem}</Badge>
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1 font-mono">

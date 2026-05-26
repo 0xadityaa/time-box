@@ -20,13 +20,13 @@ export function PayloadViewer({ payloadStr }: PayloadViewerProps) {
   }
 
   return (
-    <div className="mt-4 rounded-md border border-white/10 bg-black/40 overflow-hidden">
+    <div className="mt-4 rounded-md border border-border bg-sidebar overflow-hidden shadow-sm">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors text-sm font-medium"
+        className="w-full flex items-center gap-2 p-3 bg-muted/20 hover:bg-muted/50 transition-colors text-sm font-medium"
       >
         {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        <FileJson className="h-4 w-4 text-emerald-400" />
+        <FileJson className="h-4 w-4 text-primary" />
         Raw Payload (MinIO)
       </button>
       

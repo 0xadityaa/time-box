@@ -52,3 +52,9 @@ model HourlyMetrics {
   @@unique([timestamp, genAiSystem])
   @@index([timestamp])
 }
+
+model SystemSettings {
+  id              String   @id @default("global")
+  capturePayloads Boolean  @default(false)
+  retentionDays   Int      @default(30)
+}

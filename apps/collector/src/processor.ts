@@ -1,5 +1,6 @@
 import { prisma } from '@time-box/db';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { isCapturePayloadsEnabled } from './settings';
 
 let s3Client: S3Client | null = null;
 function getS3Client() {
@@ -19,10 +20,11 @@ function getS3Client() {
   return s3Client;
 }
 
-export async function processOtlpPayloadBatch(payloads: any[], captureContent = false) {
+export async function processOtlpPayloadBatch(payloads: any[]) {
   const spansToInsert: any[] = [];
   const tracesToInsert: Map<string, any> = new Map();
   const minioUploadPromises: Promise<any>[] = [];
+  const captureContent = isCapturePayloadsEnabled();
 
   for (const payload of payloads) {
     if (!payload?.resourceSpans) continue;
