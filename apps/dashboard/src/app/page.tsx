@@ -1,28 +1,12 @@
-import { prisma } from '@time-box/db';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getDashboardMetrics } from './actions/metrics';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Activity, Clock, FileDigit, ShieldAlert } from 'lucide-react';
+import { AreaChart, BarChart, DonutChart } from '@tremor/react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardOverview() {
-  // We can fetch data here because it's a Server Component
-  
-  // Aggregate high level stats
-  const metrics = await prisma.hourlyMetrics.findMany({
-    orderBy: { timestamp: 'desc' },
-    take: 24, // Last 24 aggregated hours
-  });
-
-  const totalTokens = metrics.reduce((acc, m) => acc + m.inputTokens + m.outputTokens, 0);
-  const totalSuccess = metrics.reduce((acc, m) => acc + m.successCount, 0);
-  const totalError = metrics.reduce((acc, m) => acc + m.errorCount, 0);
-  const totalRuns = totalSuccess + totalError;
-  const successRate = totalRuns > 0 ? ((totalSuccess / totalRuns) * 100).toFixed(2) : '0.00';
-
-  // Get average latency from the P50s
-  const avgLatency = metrics.length > 0 
-    ? (metrics.reduce((acc, m) => acc + m.p50LatencyMs, 0) / metrics.length).toFixed(0)
-    : '0';
+  const { kpis, tokensOverTime, systemLatencies, errorDistribution } = await getDashboardMetrics();
 
   return (
     <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full">
@@ -31,69 +15,112 @@ export default async function DashboardOverview() {
         <p className="text-muted-foreground mt-1">High-level metrics for your agentic systems.</p>
       </div>
 
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="shadow-sm border-border/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Tokens</CardTitle>
-            <FileDigit className="h-4 w-4 text-emerald-500" />
+            <FileDigit className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalTokens.toLocaleString()}</div>
+            <div className="text-2xl font-bold font-mono">{kpis.totalTokens.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm border-border/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Latency (P50)</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Global P99 Latency</CardTitle>
+            <Clock className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgLatency}ms</div>
-            <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
+            <div className="text-2xl font-bold font-mono">{kpis.globalP99.toLocaleString()}ms</div>
+            <p className="text-xs text-muted-foreground mt-1">Peak over last 24h</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm border-border/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Invocations</CardTitle>
-            <Activity className="h-4 w-4 text-indigo-500" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Traces</CardTitle>
+            <Activity className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalRuns.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
+            <div className="text-2xl font-bold font-mono">{kpis.totalTraces.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">Captured in 24h</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm border-border/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Success Rate</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-rose-500" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Error Rate</CardTitle>
+            <ShieldAlert className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{successRate}%</div>
-            <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
+            <div className="text-2xl font-bold font-mono">{kpis.errorRate.toFixed(2)}%</div>
+            <p className="text-xs text-muted-foreground mt-1">Across all models</p>
           </CardContent>
         </Card>
       </div>
       
-      {/* TODO: Add Recharts here for the token/latency graph */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 shadow-sm border-border/50">
           <CardHeader>
-            <CardTitle>Latency Over Time</CardTitle>
+            <CardTitle>Token Consumption</CardTitle>
+            <CardDescription>Input vs Output tokens over the last 24 hours</CardDescription>
           </CardHeader>
-          <CardContent className="h-64 flex items-center justify-center text-muted-foreground">
-            Chart coming soon
+          <CardContent>
+            <AreaChart
+              className="h-72 mt-4"
+              data={tokensOverTime}
+              index="date"
+              categories={['Input', 'Output']}
+              colors={['amber', 'orange']}
+              yAxisWidth={60}
+              showAnimation={true}
+            />
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="shadow-sm border-border/50">
           <CardHeader>
-            <CardTitle>Tokens by System</CardTitle>
+            <CardTitle>Error Distribution</CardTitle>
+            <CardDescription>Errors grouped by GenAI system</CardDescription>
           </CardHeader>
-          <CardContent className="h-64 flex items-center justify-center text-muted-foreground">
-            Chart coming soon
+          <CardContent className="flex flex-col items-center justify-center h-72 mt-4">
+            {errorDistribution.length > 0 ? (
+              <DonutChart
+                data={errorDistribution}
+                category="value"
+                index="name"
+                colors={['red', 'rose', 'orange']}
+                className="h-52"
+                showAnimation={true}
+              />
+            ) : (
+              <div className="text-muted-foreground text-sm flex items-center justify-center h-full">No errors recorded! 🎉</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="shadow-sm border-border/50">
+          <CardHeader>
+            <CardTitle>System Latency (ms)</CardTitle>
+            <CardDescription>P50, P90, and P99 latency comparison by system</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BarChart
+              className="h-72 mt-4"
+              data={systemLatencies}
+              index="name"
+              categories={['P50', 'P90', 'P99']}
+              colors={['amber', 'orange', 'rose']}
+              yAxisWidth={60}
+              showAnimation={true}
+            />
           </CardContent>
         </Card>
       </div>
