@@ -54,4 +54,29 @@ describe('Collector Payload Batch Processor', () => {
     expect(spanCreateManySpy).toHaveBeenCalled();
     expect(s3SendSpy).not.toHaveBeenCalled();
   });
+
+  test('should process valid OTLP batch with content capture', async () => {
+    const { processOtlpPayloadBatch } = await import('./processor');
+    
+    const payload = {
+      resourceSpans: [{
+        scopeSpans: [{
+          spans: [{
+            traceId: 'trace-789',
+            spanId: 'span-012',
+            name: 'chat',
+            startTimeUnixNano: '1680000000000000000',
+            attributes: []
+          }]
+        }]
+      }]
+    };
+
+    // Reset spy
+    s3SendSpy.mockClear();
+
+    await expect(processOtlpPayloadBatch([payload], true)).resolves.toBeUndefined();
+    
+    expect(s3SendSpy).toHaveBeenCalled();
+  });
 });

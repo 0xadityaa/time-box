@@ -37,10 +37,14 @@ export async function processOtlpPayloadBatch(payloads: any[], captureContent = 
           
           if (!traceId || !spanId) continue;
           
-          const attributes = span.attributes || [];
-          const getAttrStr = (key: string) => attributes.find((a: any) => a.key === key)?.value?.stringValue;
+          const attributesMap = new Map<string, any>();
+          for (const attr of span.attributes || []) {
+            attributesMap.set(attr.key, attr.value);
+          }
+
+          const getAttrStr = (key: string) => attributesMap.get(key)?.stringValue;
           const getAttrInt = (key: string) => {
-            const val = attributes.find((a: any) => a.key === key)?.value?.intValue;
+            const val = attributesMap.get(key)?.intValue;
             return (val !== undefined && val !== null) ? Number(val) : undefined;
           };
           
