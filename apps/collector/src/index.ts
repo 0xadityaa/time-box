@@ -3,6 +3,8 @@ import { traceQueue } from './queue';
 
 export const app = new Hono();
 
+traceQueue.start();
+
 // Auth Middleware
 app.use('/v1/traces', async (c, next) => {
   const expectedApiKey = process.env.TIMEBOX_API_KEY;

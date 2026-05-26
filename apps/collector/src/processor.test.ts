@@ -1,12 +1,18 @@
 import { expect, test, describe, mock } from 'bun:test';
-import { processOtlpPayloadBatch } from './processor';
 
+// Set up spies
+const traceCreateManySpy = mock(() => Promise.resolve());
+const spanCreateManySpy = mock(() => Promise.resolve());
+const transactionSpy = mock((queries: any[]) => Promise.all(queries));
+const s3SendSpy = mock(() => Promise.resolve());
+
+// Mock dependencies
 mock.module('@prisma/client', () => {
   return {
     PrismaClient: class {
-      $transaction = mock(() => Promise.resolve());
-      trace = { createMany: mock(() => Promise.resolve()) };
-      span = { createMany: mock(() => Promise.resolve()) };
+      $transaction = transactionSpy;
+      trace = { createMany: traceCreateManySpy };
+      span = { createMany: spanCreateManySpy };
     }
   };
 });
@@ -14,15 +20,17 @@ mock.module('@prisma/client', () => {
 mock.module('@aws-sdk/client-s3', () => {
   return {
     S3Client: class {
-      send = mock(() => Promise.resolve());
+      send = s3SendSpy;
     },
     PutObjectCommand: class {}
   };
 });
 
 describe('Collector Payload Batch Processor', () => {
-  test('should process valid OTLP payloads via batching', async () => {
-    const payloads = [{
+  test('should process valid OTLP batch without content capture', async () => {
+    const { processOtlpPayloadBatch } = await import('./processor');
+    
+    const payload = {
       resourceSpans: [{
         scopeSpans: [{
           spans: [{
@@ -37,8 +45,13 @@ describe('Collector Payload Batch Processor', () => {
           }]
         }]
       }]
-    }];
+    };
 
-    await expect(processOtlpPayloadBatch(payloads, false)).resolves.toBeUndefined();
+    await expect(processOtlpPayloadBatch([payload], false)).resolves.toBeUndefined();
+    
+    expect(transactionSpy).toHaveBeenCalled();
+    expect(traceCreateManySpy).toHaveBeenCalled();
+    expect(spanCreateManySpy).toHaveBeenCalled();
+    expect(s3SendSpy).not.toHaveBeenCalled();
   });
 });

@@ -9,7 +9,7 @@ export class TraceQueue {
   private isProcessing = false;
 
   constructor() {
-    this.start();
+    // Explicitly start queue from the entrypoint
   }
 
   public enqueue(payload: any) {
@@ -20,7 +20,8 @@ export class TraceQueue {
     this.buffer.push(payload);
   }
 
-  private start() {
+  public start() {
+    if (this.flushTimer) return;
     this.flushTimer = setInterval(() => {
       this.flush().catch(err => console.error('Error during trace queue flush:', err));
     }, this.FLUSH_INTERVAL_MS);
@@ -44,7 +45,12 @@ export class TraceQueue {
       const captureContent = process.env.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT === 'true';
       await processOtlpPayloadBatch(batch, captureContent);
     } catch (err) {
-      console.error('Failed to process batch:', err);
+      console.error('Failed to process batch. Requeueing traces:', err);
+      // Re-queue so we don't lose the data
+      this.buffer.unshift(...batch);
+      if (this.buffer.length > this.MAX_SIZE) {
+        this.buffer.length = this.MAX_SIZE;
+      }
     } finally {
       this.isProcessing = false;
     }
