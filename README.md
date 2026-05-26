@@ -1,6 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/0xadityaa/time-box/dev/public/logo.png" alt="time-box logo" width="200" height="200" />
-  <h1>⏱️ time-box</h1>
+  <h1>time-box</h1>
   <p><strong>The Agentic Black Box Recorder</strong></p>
   <p><em>Lightning-fast, strictly non-blocking AI observability layer. Record every prompt, token, and state transition without degrading agent performance.</em></p>
 
@@ -11,7 +10,7 @@
 
 ---
 
-## 🌪️ The Philosophy (The Golden Rule)
+## The Philosophy (The Golden Rule)
 
 > **"The execution layer must never wait for the observability layer."**
 
@@ -20,7 +19,7 @@ LLMs and Agentic workflows are computationally expensive and latency-sensitive. 
 
 **`time-box` changes this.** Using standard W3C Context Propagation and OpenTelemetry protocols (OTLP), `time-box` instantly accepts traces (`202 Accepted`) and processes the massive unstructured context payloads in a background queue, routing lightweight metadata to **PostgreSQL** and heavy LLM contexts to **MinIO (S3)**.
 
-## 🚀 Features
+## Features
 
 - **Blazing Fast Ingestion:** Next-gen Node/Bun HTTP sidecar that responds in `< 2ms`.
 - **Dual-Storage Engine:** Protects your relational database from massive context window bloat by splitting structured and unstructured payloads.
@@ -29,7 +28,7 @@ LLMs and Agentic workflows are computationally expensive and latency-sensitive. 
 - **Built-in Backpressure:** Uses an in-memory batching queue to absorb massive traffic spikes seamlessly.
 - **W3C Distributed Tracing:** Reconstruct perfect timelines of your agent's execution across infinite microservices.
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -41,7 +40,7 @@ flowchart TD
     C -->|Upload Heavy JSON| E[MinIO Blob Storage]
 ```
 
-## 📦 Getting Started
+## Getting Started
 
 ### 1. Stand up the Infrastructure
 We use Docker to run PostgreSQL and MinIO natively.
@@ -56,6 +55,8 @@ Ensure you have `bun` installed.
 ```bash
 cd apps/collector
 bun install
+# Set TIMEBOX_API_KEY if you want to require authentication for incoming telemetry
+export TIMEBOX_API_KEY="mysecret"
 bun run src/index.ts
 ```
 
@@ -71,6 +72,7 @@ import { initTimeBox, trace } from '@time-box/core';
 
 initTimeBox({
   serviceName: 'my-agent-system',
+  // Sets the 'x-api-key' header. The Collector will validate this if TIMEBOX_API_KEY is set.
   apiKey: 'mysecret',
 });
 
@@ -84,13 +86,13 @@ await trace('chat_completion', { 'gen_ai.system': 'openai' }, async (span) => {
 
 *(Note: If you are using standard frameworks like LangGraph, you don't even need our SDK! Just point your standard OpenTelemetry Exporter to `http://localhost:4318/v1/traces`)*
 
-## 🛠️ Tech Stack
+## Tech Stack
 - **Collector:** Bun, Hono, OpenTelemetry SDK, Prisma
 - **Storage:** PostgreSQL (Metadata), MinIO (S3 Heavy Blobs)
 - **Dashboard:** Next.js, Tailwind, Shadcn UI *(Coming soon in Phase 4!)*
 - **SDK:** TypeScript, tsup (CJS/ESM)
 
-## 🤝 Contributing
+## Contributing
 We use Trunk-based development. Please check out a `feat/*` branch from `dev` and submit a Pull Request.
 
 ---
