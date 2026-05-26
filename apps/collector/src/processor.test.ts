@@ -1,16 +1,18 @@
 import { expect, test, describe, mock } from 'bun:test';
 
 // Set up spies
-const traceUpsertSpy = mock(() => Promise.resolve());
-const spanUpsertSpy = mock(() => Promise.resolve());
+const traceCreateManySpy = mock(() => Promise.resolve());
+const spanCreateManySpy = mock(() => Promise.resolve());
+const transactionSpy = mock((queries: any[]) => Promise.all(queries));
 const s3SendSpy = mock(() => Promise.resolve());
 
 // Mock dependencies
 mock.module('@prisma/client', () => {
   return {
     PrismaClient: class {
-      trace = { upsert: traceUpsertSpy };
-      span = { upsert: spanUpsertSpy };
+      $transaction = transactionSpy;
+      trace = { createMany: traceCreateManySpy };
+      span = { createMany: spanCreateManySpy };
     }
   };
 });
@@ -24,10 +26,9 @@ mock.module('@aws-sdk/client-s3', () => {
   };
 });
 
-describe('Collector Payload Processor', () => {
-  test('should process valid OTLP payload without content capture', async () => {
-    // Dynamically import processor AFTER mocks are registered
-    const { processOtlpPayload } = await import('./processor');
+describe('Collector Payload Batch Processor', () => {
+  test('should process valid OTLP batch without content capture', async () => {
+    const { processOtlpPayloadBatch } = await import('./processor');
     
     const payload = {
       resourceSpans: [{
@@ -46,18 +47,16 @@ describe('Collector Payload Processor', () => {
       }]
     };
 
-    await expect(processOtlpPayload(payload, false)).resolves.toBeUndefined();
+    await expect(processOtlpPayloadBatch([payload], false)).resolves.toBeUndefined();
     
-    // Assert that upsert was called with the correct extracted attributes
-    expect(traceUpsertSpy).toHaveBeenCalled();
-    expect(spanUpsertSpy).toHaveBeenCalled();
-    
-    // Ensure S3 was not called because captureContent is false
+    expect(transactionSpy).toHaveBeenCalled();
+    expect(traceCreateManySpy).toHaveBeenCalled();
+    expect(spanCreateManySpy).toHaveBeenCalled();
     expect(s3SendSpy).not.toHaveBeenCalled();
   });
 
-  test('should process valid OTLP payload with content capture', async () => {
-    const { processOtlpPayload } = await import('./processor');
+  test('should process valid OTLP batch with content capture', async () => {
+    const { processOtlpPayloadBatch } = await import('./processor');
     
     const payload = {
       resourceSpans: [{
@@ -73,12 +72,11 @@ describe('Collector Payload Processor', () => {
       }]
     };
 
-    // First reset the spy
+    // Reset spy
     s3SendSpy.mockClear();
 
-    await expect(processOtlpPayload(payload, true)).resolves.toBeUndefined();
+    await expect(processOtlpPayloadBatch([payload], true)).resolves.toBeUndefined();
     
-    // Ensure S3 was called because captureContent is true
     expect(s3SendSpy).toHaveBeenCalled();
   });
 });

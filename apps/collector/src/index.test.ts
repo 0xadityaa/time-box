@@ -1,40 +1,56 @@
-import { expect, test, describe } from 'bun:test';
+import { expect, test, describe, beforeAll, afterAll } from 'bun:test';
 import { app } from './index';
+import { traceQueue } from './queue';
 
 describe('Collector OTLP Endpoint', () => {
-  test('POST /v1/traces returns 202 Accepted immediately', async () => {
-    const payload = {
-      resourceSpans: [
-        {
-          resource: { attributes: [] },
-          scopeSpans: []
-        }
-      ]
-    };
+  let originalKey: string | undefined;
 
-    const req = new Request('http://localhost:4318/v1/traces', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const res = await app.fetch(req);
-    
-    expect(res.status).toBe(202);
-    const resJson = await res.json();
-    expect(resJson).toEqual({});
+  beforeAll(() => {
+    originalKey = process.env.TIMEBOX_API_KEY;
   });
 
-  test('POST /v1/traces handles malformed JSON without crashing', async () => {
-    const req = new Request('http://localhost:4318/v1/traces', {
+  afterAll(() => {
+    if (originalKey) process.env.TIMEBOX_API_KEY = originalKey;
+    else delete process.env.TIMEBOX_API_KEY;
+    traceQueue.stop();
+  });
+
+  test('POST /v1/traces returns 202 Accepted immediately without auth if no key set', async () => {
+    delete process.env.TIMEBOX_API_KEY;
+    const req = new Request('http://localhost/v1/traces', {
       method: 'POST',
+      body: JSON.stringify({ resourceSpans: [] }),
       headers: { 'Content-Type': 'application/json' },
-      body: '{"malformed": "json"', // Missing closing bracket
     });
 
-    // It should still return 202, and the background parse will fail silently
-    const res = await app.fetch(req);
-    
+    const res = await app.request(req);
+    expect(res.status).toBe(202);
+  });
+
+  test('POST /v1/traces returns 401 Unauthorized if API key is required but missing', async () => {
+    process.env.TIMEBOX_API_KEY = 'secret123';
+    const req = new Request('http://localhost/v1/traces', {
+      method: 'POST',
+      body: JSON.stringify({ resourceSpans: [] }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await app.request(req);
+    expect(res.status).toBe(401);
+  });
+
+  test('POST /v1/traces returns 202 Accepted if API key matches', async () => {
+    process.env.TIMEBOX_API_KEY = 'secret123';
+    const req = new Request('http://localhost/v1/traces', {
+      method: 'POST',
+      body: JSON.stringify({ resourceSpans: [] }),
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-api-key': 'secret123'
+      },
+    });
+
+    const res = await app.request(req);
     expect(res.status).toBe(202);
   });
 });

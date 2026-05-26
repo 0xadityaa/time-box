@@ -21,105 +21,117 @@ function getS3Client() {
   return s3Client;
 }
 
-export async function processOtlpPayload(payload: any, captureContent = false) {
-  if (!payload?.resourceSpans) return;
+export async function processOtlpPayloadBatch(payloads: any[], captureContent = false) {
+  const spansToInsert: any[] = [];
+  const tracesToInsert: Map<string, any> = new Map();
+  const minioUploadPromises: Promise<any>[] = [];
 
-  for (const rs of payload.resourceSpans) {
-    for (const ss of rs.scopeSpans || []) {
-      for (const span of ss.spans || []) {
-        const traceId = span.traceId;
-        const spanId = span.spanId;
-        
-        if (!traceId || !spanId) continue;
-        
-        const attributesMap = new Map<string, any>();
-        for (const attr of span.attributes || []) {
-          attributesMap.set(attr.key, attr.value);
-        }
+  for (const payload of payloads) {
+    if (!payload?.resourceSpans) continue;
 
-        const getAttrStr = (key: string) => attributesMap.get(key)?.stringValue;
-        const getAttrInt = (key: string) => {
-          const val = attributesMap.get(key)?.intValue;
-          return (val !== undefined && val !== null) ? Number(val) : undefined;
-        };
-        
-        const genAiSystem = getAttrStr('gen_ai.system');
-        const inputTokens = getAttrInt('gen_ai.usage.input_tokens');
-        const outputTokens = getAttrInt('gen_ai.usage.output_tokens');
-        const latencyMs = getAttrInt('latency_ms');
-        
-        let payloadUri: string | undefined;
-        
-        if (captureContent) {
-          const objectKey = `${traceId}/${spanId}.json`;
-          try {
-            const client = getS3Client();
-            await client.send(new PutObjectCommand({
-              Bucket: 'traces',
-              Key: objectKey,
-              Body: JSON.stringify(span),
-              ContentType: 'application/json',
-            }));
-            payloadUri = `minio://traces/${objectKey}`;
-          } catch (e) {
-            console.error('Failed to write context payload to MinIO:', e);
+    for (const rs of payload.resourceSpans) {
+      for (const ss of rs.scopeSpans || []) {
+        for (const span of ss.spans || []) {
+          const traceId = span.traceId;
+          const spanId = span.spanId;
+          
+          if (!traceId || !spanId) continue;
+          
+          const attributesMap = new Map<string, any>();
+          for (const attr of span.attributes || []) {
+            attributesMap.set(attr.key, attr.value);
           }
-        }
-        
-        // Parse unix nano strings via BigInt to avoid precision loss
-        const startNano = span.startTimeUnixNano;
-        const startTime = startNano ? new Date(Number(BigInt(startNano) / 1000000n)) : new Date();
-        
-        const endNano = span.endTimeUnixNano;
-        const endTime = endNano ? new Date(Number(BigInt(endNano) / 1000000n)) : null;
 
-        const compositeId = `${traceId}:${spanId}`;
-        const parentSpanId = span.parentSpanId ? `${traceId}:${span.parentSpanId}` : null;
-        const name = span.name || 'unnamed';
+          const getAttrStr = (key: string) => attributesMap.get(key)?.stringValue;
+          const getAttrInt = (key: string) => {
+            const val = attributesMap.get(key)?.intValue;
+            return (val !== undefined && val !== null) ? Number(val) : undefined;
+          };
+          
+          const genAiSystem = getAttrStr('gen_ai.system');
+          const inputTokens = getAttrInt('gen_ai.usage.input_tokens');
+          const outputTokens = getAttrInt('gen_ai.usage.output_tokens');
+          const latencyMs = getAttrInt('latency_ms');
+          
+          let payloadUri: string | undefined;
+          
+          if (captureContent) {
+            const objectKey = `${traceId}/${spanId}.json`;
+            payloadUri = `minio://traces/${objectKey}`;
+            
+            const client = getS3Client();
+            minioUploadPromises.push(
+              client.send(new PutObjectCommand({
+                Bucket: 'traces',
+                Key: objectKey,
+                Body: JSON.stringify(span),
+                ContentType: 'application/json',
+              })).catch(e => console.error('MinIO Upload Error:', e))
+            );
+          }
+          
+          const startNano = span.startTimeUnixNano;
+          const startTime = startNano ? new Date(Number(BigInt(startNano) / 1000000n)) : new Date();
+          
+          const endNano = span.endTimeUnixNano;
+          const endTime = endNano ? new Date(Number(BigInt(endNano) / 1000000n)) : null;
 
-        try {
-          await prisma.trace.upsert({
-            where: { id: traceId },
-            update: {
-              endTime: endTime || undefined,
-            },
-            create: {
-              id: traceId,
-              startTime,
-              endTime: endTime || undefined,
-            }
+          // Track unique traces (last seen end time max logic)
+          const existingTrace = tracesToInsert.get(traceId);
+          let mergedEndTime = endTime;
+          if (existingTrace?.endTime && endTime) {
+             mergedEndTime = existingTrace.endTime > endTime ? existingTrace.endTime : endTime;
+          } else if (existingTrace?.endTime) {
+             mergedEndTime = existingTrace.endTime;
+          }
+
+          tracesToInsert.set(traceId, {
+            id: traceId,
+            startTime: existingTrace?.startTime || startTime,
+            endTime: mergedEndTime || undefined,
           });
 
-          await prisma.span.upsert({
-            where: { id: compositeId },
-            update: {
-              name,
-              latencyMs,
-              genAiSystem,
-              inputTokens,
-              outputTokens,
-              payloadUri,
-              endTime: endTime || undefined,
-            },
-            create: {
-              id: compositeId,
-              spanId, // Assuming schema was updated to include this separately
-              traceId,
-              parentSpanId,
-              name,
-              startTime,
-              endTime: endTime || undefined,
-              latencyMs,
-              genAiSystem,
-              inputTokens,
-              outputTokens,
-              payloadUri,
-            }
+          const compositeId = `${traceId}:${spanId}`;
+          const parentSpanId = span.parentSpanId ? `${traceId}:${span.parentSpanId}` : null;
+          
+          spansToInsert.push({
+            id: compositeId,
+            spanId, // Provided schema was updated
+            traceId,
+            parentSpanId,
+            name: span.name || 'unnamed',
+            startTime,
+            endTime: endTime || undefined,
+            latencyMs,
+            genAiSystem,
+            inputTokens,
+            outputTokens,
+            payloadUri,
           });
-        } catch (dbErr) {
-          console.error(`Failed to write trace/span to Postgres [Trace: ${traceId}, Span: ${spanId}]:`, dbErr);
         }
       }
     }
+  }
+
+  if (minioUploadPromises.length > 0) {
+    await Promise.allSettled(minioUploadPromises);
+  }
+
+  if (tracesToInsert.size === 0 && spansToInsert.length === 0) return;
+
+  try {
+    await prisma.$transaction([
+      prisma.trace.createMany({
+        data: Array.from(tracesToInsert.values()),
+        skipDuplicates: true,
+      }),
+      prisma.span.createMany({
+        data: spansToInsert,
+        skipDuplicates: true,
+      })
+    ]);
+  } catch (dbErr) {
+    console.error(`Failed to batch insert to Postgres (${spansToInsert.length} spans):`, dbErr);
+    throw dbErr; // Rethrow to allow TraceQueue to retry
   }
 }
